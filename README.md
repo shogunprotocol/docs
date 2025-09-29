@@ -91,6 +91,6 @@ GIT_USER=<Your GitHub username> npm run deploy
 
 ## 🔗 Links
 
-- **Live Documentation**: https://docs.reactive-hook.shogun.finance
-- **GitHub Repository**: https://github.com/shogun-finance/reactive-hook
-- **Shogun Finance**: https://shogun.finance
+- **Live Documentation**: https://docs.reactive-hook.shogun.fi
+- **GitHub Repository**: https://github.com/shogun-finance/reactive-contracts-v2
+- **Shogun Finance**: https://shogun.fi
