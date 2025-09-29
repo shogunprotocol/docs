@@ -1,0 +1,19 @@
+shogun-team:
+  name: Shogun Team
+  title: Shogun Core Contributors
+  url: https://shogun.finance
+  image_url: https://github.com/shogunprotocol.png
+  page: true
+  socials:
+    x: shogun_fi
+    github: shogunprotocol
+
+reactive-team:
+  name: Reactive Network Team
+  title: Reactive Network Contributors
+  url: https://reactive.network
+  image_url: https://github.com/parsiq.png
+  page: true
+  socials:
+    x: reactive_network
+    github: parsiq

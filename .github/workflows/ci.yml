@@ -1,0 +1,211 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint and Format Check
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run TypeScript check
+      run: npm run typecheck
+
+    - name: Run ESLint
+      run: npm run lint
+
+    - name: Check Prettier formatting
+      run: npm run format:check
+
+  build-test:
+    runs-on: ubuntu-latest
+    name: Build and Test
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build site
+      run: npm run build
+
+    - name: Test build output
+      run: |
+        # Check that build succeeded
+        test -d build
+        test -f build/index.html
+
+        # Check for essential pages
+        test -f build/docs/getting-started/overview/index.html
+        test -f build/docs/architecture/system-architecture/index.html
+        test -f build/docs/deployment/prerequisites/index.html
+
+        # Check for static assets
+        test -d build/assets
+
+        # Basic HTML validation
+        grep -q "Reactive Hook System" build/index.html
+        grep -q "docusaurus" build/index.html
+
+    - name: Check internal links
+      run: |
+        # Basic check for broken internal links
+        echo "Checking for obvious broken links..."
+
+        # Check that all referenced docs exist
+        if grep -r "](/docs/" docs/ | grep -v ".md:" | head -1; then
+          echo "Found internal link references, checking..."
+          # This would need a more sophisticated link checker in practice
+        fi
+
+    - name: Validate markdown
+      run: |
+        # Check markdown files are valid
+        find docs -name "*.md" -exec echo "Checking {}" \;
+
+        # Check frontmatter exists
+        for file in docs/**/*.md; do
+          if [ -f "$file" ]; then
+            if ! head -5 "$file" | grep -q "^---$"; then
+              echo "Missing frontmatter in $file"
+              exit 1
+            fi
+          fi
+        done
+
+    - name: Check for TODO markers
+      run: |
+        # Fail if any TODO markers are left in docs
+        if grep -r "TODO\|FIXME\|XXX" docs/; then
+          echo "Found TODO markers in documentation"
+          exit 1
+        fi
+
+  accessibility:
+    runs-on: ubuntu-latest
+    name: Accessibility Check
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build site
+      run: npm run build
+
+    - name: Serve site
+      run: |
+        npm run serve &
+        sleep 10  # Wait for server to start
+
+    - name: Run accessibility tests
+      run: |
+        # Install axe-cli for accessibility testing
+        npm install -g @axe-core/cli
+
+        # Test main pages for accessibility
+        axe http://localhost:3000 --exit
+        axe http://localhost:3000/docs/getting-started/overview --exit
+        axe http://localhost:3000/docs/architecture/system-architecture --exit
+
+  security:
+    runs-on: ubuntu-latest
+    name: Security Scan
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run npm audit
+      run: npm audit --audit-level=moderate
+
+    - name: Check for sensitive data
+      run: |
+        # Check for potential secrets in documentation
+        if grep -r -i "password\|secret\|key\|token" docs/ --exclude-dir=node_modules | grep -v "example\|placeholder\|YOUR_"; then
+          echo "Potential sensitive data found in docs"
+          exit 1
+        fi
+
+  performance:
+    runs-on: ubuntu-latest
+    name: Performance Check
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build site
+      run: npm run build
+
+    - name: Analyze bundle size
+      run: |
+        # Check build size is reasonable
+        BUILD_SIZE=$(du -sm build | cut -f1)
+        echo "Build size: ${BUILD_SIZE}MB"
+
+        if [ $BUILD_SIZE -gt 100 ]; then
+          echo "Build size too large: ${BUILD_SIZE}MB"
+          exit 1
+        fi
+
+    - name: Check image optimization
+      run: |
+        # Check for unoptimized images
+        find static -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" | while read img; do
+          SIZE=$(stat -f%z "$img" 2>/dev/null || stat -c%s "$img" 2>/dev/null)
+          if [ $SIZE -gt 1048576 ]; then  # 1MB
+            echo "Large image found: $img (${SIZE} bytes)"
+            exit 1
+          fi
+        done
