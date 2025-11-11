@@ -8,7 +8,6 @@ This repository contains the documentation website for the Reactive Hook System,
 
 - Node.js 18+ and npm
 - Git
-
 ### Installation
 
 ```bash
